@@ -1,0 +1,17 @@
+{
+  "name": "Nivel DP · Montajes y Rango",
+  "short_name": "Nivel DP",
+  "description": "Calculadora de rango LRV/URV/Span para medición de nivel con transmisor de presión diferencial. 7 montajes industriales.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#E9E5DC",
+  "theme_color": "#0C252A",
+  "lang": "es",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}

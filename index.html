@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Nivel por DP · Montajes y Calculadora de Rango</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0C252A">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nivel DP">
+
+<style>
+  :root{
+    --steel:#0C252A;
+    --steel-2:#0F343B;
+    --vessel:#17727E;
+    --vessel-deep:#0F4C55;
+    --hazard:#F2B705;
+    --hazard-deep:#C98A00;
+    --alert:#D64828;
+    --alert-deep:#A5331B;
+    --wet:#2E7DD1;
+    --heavy:#5B4A8A;
+    --concrete:#E9E5DC;
+    --paper:#FBFAF6;
+    --ink:#132320;
+    --muted:#61706E;
+    --line:#D3CEC2;
+    --readout:#0BE3A6;
+    --display:"Arial Narrow","Helvetica Neue Condensed",system-ui,sans-serif;
+    --body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    --mono:ui-monospace,"SF Mono","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{-webkit-text-size-adjust:100%}
+  body{font-family:var(--body);background:var(--concrete);color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:560px;margin:0 auto;padding:0 14px 60px}
+
+  header{
+    background:var(--steel);color:var(--paper);
+    padding:18px 16px 20px;margin:0 -14px 14px;
+    border-bottom:4px solid var(--hazard);
+  }
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--hazard);display:flex;align-items:center;gap:8px}
+  .eyebrow::before{content:"";width:9px;height:9px;background:var(--alert);border-radius:50%;box-shadow:0 0 0 3px rgba(214,72,40,.25)}
+  h1{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:clamp(24px,6.5vw,32px);line-height:1;margin-top:10px}
+  .sub{font-family:var(--mono);font-size:12px;color:#9FB2AF;margin-top:8px}
+  .sub b{color:var(--paper)}
+
+  /* principle strip */
+  .principle{
+    background:var(--steel-2);border-radius:12px;padding:12px 14px;margin-bottom:14px;
+    color:#C9D8D5;font-size:13px;border:1px solid rgba(255,255,255,.06);
+  }
+  .principle .f{font-family:var(--mono);color:var(--readout);font-size:15px;font-weight:700;display:block;margin-bottom:4px}
+  .principle b{color:#fff}
+
+  /* mode selector */
+  .selector-label{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);margin:4px 2px 8px}
+  .modes{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 12px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .modes::-webkit-scrollbar{display:none}
+  .mode-chip{
+    flex:none;display:flex;flex-direction:column;gap:2px;align-items:flex-start;
+    background:var(--paper);border:2px solid var(--line);border-radius:12px;
+    padding:9px 13px;cursor:pointer;min-width:118px;text-align:left;
+  }
+  .mode-chip .num{font-family:var(--mono);font-size:10px;font-weight:700;color:var(--hazard-deep);letter-spacing:.1em}
+  .mode-chip .nm{font-family:var(--display);font-weight:700;text-transform:uppercase;font-size:13.5px;line-height:1.15;color:var(--ink)}
+  .mode-chip.on{border-color:var(--vessel);background:#E8F2F1}
+  .mode-chip.on .num{color:var(--vessel-deep)}
+
+  .card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px 15px;margin-bottom:14px}
+  .card-label{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .card-label .n{font-weight:700;color:var(--vessel-deep);border:1.5px solid var(--vessel);border-radius:5px;padding:1px 6px;font-size:11px}
+
+  .diagram-card{padding:12px 8px 8px}
+  svg{width:100%;height:auto;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:6px 14px;padding:8px 8px 4px;font-size:12px;color:var(--muted)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .dot{width:11px;height:11px;border-radius:3px;flex:none}
+
+  .explain{font-size:14px;color:#2A3B38}
+  .explain p{margin-bottom:10px}
+  .explain p:last-child{margin-bottom:0}
+  .explain b{color:var(--ink)}
+  .tagline{
+    font-family:var(--mono);font-size:12px;background:#F4F1E9;border-left:3px solid var(--hazard);
+    padding:8px 11px;border-radius:0 8px 8px 0;color:#4a4030;margin-bottom:12px;
+  }
+
+  .field{margin-bottom:14px}
+  .field:last-child{margin-bottom:2px}
+  .field label{display:block;font-weight:600;font-size:15px;margin-bottom:3px}
+  .field .hint{font-size:12.5px;color:var(--muted);margin-bottom:8px}
+  .field .hint b{color:var(--ink)}
+  .chip{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:4px;color:#fff;vertical-align:1px;margin-right:6px}
+  .c-teal{background:var(--vessel)} .c-red{background:var(--alert)} .c-blue{background:var(--wet)}
+  .c-gold{background:var(--hazard-deep)} .c-purple{background:var(--heavy)} .c-ink{background:#3B4B49}
+  input[type=number]{
+    font-family:var(--mono);font-size:19px;font-weight:600;width:100%;
+    padding:11px 13px;border:2px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);
+  }
+  input[type=number]:focus{outline:none;border-color:var(--vessel);box-shadow:0 0 0 3px rgba(23,114,126,.15)}
+  .input-row{display:flex;gap:8px}
+  .seg{display:inline-flex;border:2px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+  .seg button{font-family:var(--mono);font-size:14px;font-weight:700;border:none;background:#fff;color:var(--muted);padding:0 15px;cursor:pointer;min-height:47px}
+  .seg button.on{background:var(--vessel);color:#fff}
+  .two-col{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  /* formula panel */
+  .formula-panel{background:#F4F1E9;border:1px dashed var(--line);border-radius:10px;padding:12px 13px;font-family:var(--mono);font-size:13.5px;line-height:2;overflow-x:auto}
+  .formula-panel .sym{color:var(--vessel-deep);font-weight:700}
+  .formula-panel .sub-line{color:#6a6a5a;font-size:12.5px;white-space:nowrap}
+  .formula-panel .res{color:var(--alert-deep);font-weight:700}
+  .formula-panel hr{border:none;border-top:1px dashed var(--line);margin:6px 0}
+
+  /* readout */
+  .readout{background:var(--steel);border-radius:14px;padding:6px 6px 14px;margin-bottom:14px;color:var(--paper);border:1px solid #0A1C20}
+  .readout-top{display:flex;justify-content:space-between;align-items:center;padding:12px 12px 10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--hazard)}
+  .readout-top .st{display:flex;align-items:center;gap:7px;color:#8FA4A1}
+  .readout-top .st.ok{color:var(--readout)}
+  .readout-top .st::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;padding:0 6px}
+  .rd{background:var(--steel-2);border-radius:10px;padding:12px 6px 11px;text-align:center;border:1px solid rgba(255,255,255,.05)}
+  .rd .k{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:#8FA4A1;text-transform:uppercase}
+  .rd .k small{display:block;font-size:9px;opacity:.75;margin-top:1px}
+  .rd .v{font-family:var(--mono);font-weight:700;font-size:clamp(18px,5.6vw,25px);color:var(--readout);margin-top:6px;line-height:1;font-variant-numeric:tabular-nums}
+  .rd .v.dash{color:#47585A}
+  .rd .u{font-family:var(--mono);font-size:10px;color:#8FA4A1;margin-top:3px}
+  .rd.span-rd .v{color:var(--hazard)}
+  .zero-type{
+    margin:10px 6px 0;text-align:center;font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+    padding:7px;border-radius:8px;background:rgba(255,255,255,.05);color:#B9C9C6;
+  }
+  .zero-type b{color:var(--hazard)}
+  .conv{margin:10px 6px 0;padding:10px 12px;background:rgba(255,255,255,.04);border-radius:9px;font-family:var(--mono);font-size:12px;color:#B9C9C6;display:none;flex-direction:column;gap:5px}
+  .conv div{display:flex;justify-content:space-between;gap:10px}
+  .conv span{color:var(--paper);text-align:right}
+  .conv .lbl{color:#7E9491;flex:none}
+
+  .note{display:flex;gap:11px;padding:12px 13px;border-radius:11px;font-size:13.5px;margin-bottom:10px;align-items:flex-start}
+  .note:last-child{margin-bottom:0}
+  .note .ic{flex:none;width:26px;height:26px;border-radius:7px;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:16px;color:#fff}
+  .note.warn{background:#FBEEE9;border:1px solid #F0C7B8}
+  .note.warn .ic{background:var(--alert)}
+  .note.info{background:#EAF3F1;border:1px solid #C6DED9}
+  .note.info .ic{background:var(--vessel)}
+
+  .actions{display:flex;gap:10px;margin:4px 0 14px}
+  .btn{flex:1;font-family:var(--display);text-transform:uppercase;letter-spacing:.05em;font-weight:700;font-size:16px;padding:14px;border-radius:11px;border:2px solid transparent;cursor:pointer}
+  .btn.print{background:var(--vessel);color:#fff}
+  .btn.reset{background:transparent;color:var(--muted);border-color:var(--line)}
+  .btn:active{transform:translateY(1px)}
+
+  details{background:var(--paper);border:1px solid var(--line);border-radius:14px;margin-bottom:12px;overflow:hidden}
+  summary{font-family:var(--display);font-weight:700;text-transform:uppercase;letter-spacing:.04em;font-size:15px;color:var(--steel);cursor:pointer;padding:14px 16px;list-style:none;display:flex;justify-content:space-between;align-items:center}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font-family:var(--mono);font-size:18px;color:var(--vessel)}
+  details[open] summary::after{content:"–"}
+  .details-body{padding:0 16px 16px;font-size:13.5px;color:#2A3B38}
+  .details-body p{margin-bottom:9px}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin:6px 0}
+  th{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 8px;border-bottom:2px solid var(--line)}
+  td{padding:7px 8px;border-bottom:1px solid #EAE6DC}
+  td.mono{font-family:var(--mono);font-size:12.5px}
+  .chk{counter-reset:step}
+  .chk li{list-style:none;position:relative;padding:6px 0 6px 34px;font-size:13.5px}
+  .chk li::before{
+    counter-increment:step;content:counter(step);
+    position:absolute;left:0;top:7px;width:22px;height:22px;border-radius:6px;
+    background:var(--steel);color:var(--hazard);font-family:var(--mono);font-size:11px;font-weight:700;
+    display:grid;place-items:center;
+  }
+  .phase{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--vessel-deep);margin:12px 0 4px;border-bottom:1px dashed var(--line);padding-bottom:3px}
+
+  footer{text-align:center;font-family:var(--mono);font-size:10.5px;color:var(--muted);letter-spacing:.08em;padding:18px 0 0}
+
+  @media print{
+    body{background:#fff}
+    header{margin:0 0 14px}
+    .actions,.modes,.selector-label,footer{display:none}
+    .card,.readout,details{break-inside:avoid}
+    details{border:1px solid #999}
+    .readout{background:#fff;color:#000;border:2px solid #000}
+    .rd{background:#f2f2f2}.rd .v,.rd.span-rd .v{color:#000}
+    .readout-top,.conv,.conv span,.conv .lbl,.rd .k,.rd .u,.zero-type{color:#333}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Instrumentación · Comisionamiento</div>
+  <h1>Nivel por Presión Diferencial</h1>
+  <div class="sub">7 montajes de campo · Cálculo de rango verificado · Salida <b>inH₂O</b></div>
+  <div class="sub">Creada por: Ing. Eduardo Palacios T.</b></div>
+</header>
+
+<div class="principle">
+  <span class="f">ΔP = h × SG&nbsp;&nbsp;(inH₂O = pulgadas × densidad relativa)</span>
+  El transmisor no "ve" nivel: ve columna hidrostática. <b>El span siempre es la altura medida × SG del fluido de proceso.</b> El montaje solo cambia el offset (LRV), porque ahí entran las columnas fijas de las piernas.
+</div>
+
+<div class="selector-label">Selecciona el montaje que tienes en campo</div>
+<div class="modes" id="modes"></div>
+
+<div id="modeArea"></div>
+
+<div class="readout" id="readout">
+  <div class="readout-top">
+    <span>Rango calculado</span>
+    <span class="st" id="statusPill">esperando datos</span>
+  </div>
+  <div class="grid3">
+    <div class="rd"><div class="k">LRV<small>0%</small></div><div class="v dash" id="lrv">–</div><div class="u">inH₂O</div></div>
+    <div class="rd"><div class="k">URV<small>100%</small></div><div class="v dash" id="urv">–</div><div class="u">inH₂O</div></div>
+    <div class="rd span-rd"><div class="k">SPAN</div><div class="v dash" id="span">–</div><div class="u">inH₂O</div></div>
+  </div>
+  <div class="zero-type" id="zeroType" style="display:none"></div>
+  <div class="conv" id="conv">
+    <div><span class="lbl">LRV / URV</span><span id="cMbar">–</span></div>
+    <div><span class="lbl">LRV / URV</span><span id="cKpa">–</span></div>
+    <div><span class="lbl">Span</span><span id="cSpan">–</span></div>
+  </div>
+</div>
+
+<div class="card" id="pitfallCard"></div>
+
+<div class="actions">
+  <button class="btn print" onclick="window.print()">Guardar / PDF</button>
+  <button class="btn reset" onclick="resetAll()">Limpiar</button>
+</div>
+
+<!-- ====== GUÍA DE ESTUDIO ====== -->
+
+<details>
+  <summary>Supresión vs. elevación de cero</summary>
+  <div class="details-body">
+    <p><b>Cero suprimido (suppressed zero):</b> el LRV es <b>positivo</b> — el transmisor ve presión incluso con el nivel en 0%, porque hay columna de líquido entre el 0% y el diafragma en el lado HP. Ejemplo: rango 6 a 30 inH₂O.</p>
+    <p><b>Cero elevado (elevated zero):</b> el LRV es <b>negativo</b> — típico con pierna húmeda o sellos remotos, porque la columna de referencia del lado LP supera a la del HP en 0%. Ejemplo: rango −88 a −8 inH₂O.</p>
+    <p><b>Ojo en campo:</b> parte de la literatura y algunos manuales intercambian estos nombres. Para evitar discusiones, reporta siempre los <b>números</b> de LRV y URV con su signo — el número no tiene ambigüedad, el nombre sí.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Tabla de densidades relativas (SG) de referencia</summary>
+  <div class="details-body">
+    <table>
+      <tr><th>Fluido</th><th>SG</th><th>Nota</th></tr>
+      <tr><td>Agua</td><td class="mono">1.000</td><td>a 20 °C (referencia)</td></tr>
+      <tr><td>Amoníaco líq. sat.</td><td class="mono">0.64</td><td>a 0 °C</td></tr>
+      <tr><td>Amoníaco líq. sat.</td><td class="mono">0.60</td><td>a 25 °C</td></tr>
+      <tr><td>Amoníaco líq. sat.</td><td class="mono">0.58</td><td>a 40 °C</td></tr>
+      <tr><td>Ácido nítrico 68%</td><td class="mono">≈1.41</td><td>a 20 °C</td></tr>
+      <tr><td>Ácido fosfórico 75%</td><td class="mono">≈1.58</td><td>a 20 °C</td></tr>
+      <tr><td>Etilenglicol</td><td class="mono">≈1.11</td><td>líquido de sello común</td></tr>
+      <tr><td>Silicona (llenado sellos)</td><td class="mono">0.93–0.97</td><td>ver hoja de datos del sello</td></tr>
+      <tr><td>Queroseno</td><td class="mono">≈0.80</td><td>–</td></tr>
+      <tr><td>Gasóleo / diésel</td><td class="mono">≈0.84</td><td>–</td></tr>
+    </table>
+    <p>La densidad <b>cambia con la temperatura</b>. Para el rango definitivo usa la SG a la temperatura de operación normal, de tabla termodinámica u hoja de datos del proceso. Para el fluido de llenado de sellos remotos, la SG viene en la hoja de datos del fabricante del sello.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Checklist de comisionamiento (6 fases)</summary>
+  <div class="details-body">
+    <div class="phase">Fase 1 · Levantamiento</div>
+    <ol class="chk">
+      <li>Tipo de tanque (abierto/cerrado), fluido y sus condiciones (T, P de operación).</li>
+      <li>Ubica físicamente HP y LP: cuál toca líquido, cuál vapor/atmósfera.</li>
+      <li>Mide L (0→100% real), el offset del transmisor (d o e) y, si aplica, h_ref o T de sellos.</li>
+    </ol>
+    <div class="phase">Fase 2 · Instalación física</div>
+    <ol class="chk">
+      <li>Pendientes del tubing: ¿drena hacia el proceso o forma trampas?</li>
+      <li>Manifold: verifica bloqueo, ecualización y dren/venteo.</li>
+      <li>Fluido condensable con pierna seca → plan de purga con frecuencia definida. Heat tracing si aplica.</li>
+    </ol>
+    <div class="phase">Fase 3 · Cálculo</div>
+    <ol class="chk">
+      <li>Aplica la fórmula del montaje (esta app) y confirma que LRV/URV caben en el rango físico del sensor (turn-down).</li>
+      <li>Unidades de ingeniería según estándar de planta.</li>
+    </ol>
+    <div class="phase">Fase 4 · Configuración</div>
+    <ol class="chk">
+      <li>Carga LRV/URV (HART o local). Verifica acción directa/inversa y damping.</li>
+    </ol>
+    <div class="phase">Fase 5 · Loop check</div>
+    <ol class="chk">
+      <li>Simula presión en 0 / 50 / 100% con calibrador y verifica 4-12-20 mA.</li>
+      <li>Contrasta con el vidrio de nivel. Documenta hoja de calibración.</li>
+    </ol>
+    <div class="phase">Fase 6 · Puesta en servicio</div>
+    <ol class="chk">
+      <li>Secuencia de manifold: abre bloqueos, cierra ecualización, purga aire (o llena piernas húmedas).</li>
+      <li>Verifica lectura contra proceso real. Si hay desviación: revisa piernas y trampas ANTES de tocar la calibración.</li>
+    </ol>
+  </div>
+</details>
+
+<details>
+  <summary>Errores clásicos que debes reconocer</summary>
+  <div class="details-body">
+    <p><b>Deriva lenta hacia nivel bajo:</b> pierna "seca" que se está llenando de condensado. No es descalibración, es física. Purga y verifica.</p>
+    <p><b>Signo invertido en el cero:</b> confundir supresión con elevación al configurar → lectura fuera de escala o invertida.</p>
+    <p><b>SG desactualizada:</b> la densidad calculada a una temperatura distinta a la de operación desplaza toda la escala. Error proporcional al cambio de SG.</p>
+    <p><b>Sellos a distinta altura ignorados:</b> con capilares, la altura del transmisor se cancela, pero la <b>diferencia de altura entre sellos (T)</b> genera un offset fijo de −T×SG_fill que debe estar en el cálculo.</p>
+    <p><b>Interfase fuera de rango:</b> si la interfase sube por encima de la toma superior o baja de la inferior, la lectura satura y deja de tener significado físico.</p>
+    <p><b>Mezcla de unidades:</b> mmH₂O vs inH₂O vs mbar al pasar del cálculo al transmisor. Un factor de 25.4 de error es un clásico.</p>
+  </div>
+</details>
+
+<footer>NIVEL DP · 7 MONTAJES · ECUACIONES VERIFICADAS · FUNCIONA SIN INTERNET</footer>
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   ECUACIONES — verificadas contra simulación física ΔP = P_HP − P_LP
+   Convención: alturas en pulgadas → resultado en inH₂O (altura × SG)
+   ============================================================ */
+var INH2O_MBAR=2.4864, INH2O_KPA=0.24864; // @68°F
+var unit="in";
+var currentMode="dry";
+
+function toIn(v){return unit==="cm"? v/2.54 : v;}
+function fmt(x){return (Math.round(x*100)/100).toFixed(2);}
+function fmt3(x){return (Math.round(x*1000)/1000).toFixed(3);}
+
+/* ---------- SVG helpers ---------- */
+function dimArrow(x,y1,y2,color,label){
+  var mid=(y1+y2)/2;
+  return '<line x1="'+x+'" y1="'+y1+'" x2="'+x+'" y2="'+y2+'" stroke="'+color+'" stroke-width="2"/>' +
+  '<path d="M'+(x-4)+','+(y1+7)+' L'+x+','+(y1-1)+' L'+(x+4)+','+(y1+7)+'" fill="none" stroke="'+color+'" stroke-width="2"/>' +
+  '<path d="M'+(x-4)+','+(y2-7)+' L'+x+','+(y2+1)+' L'+(x+4)+','+(y2-7)+'" fill="none" stroke="'+color+'" stroke-width="2"/>' +
+  '<rect x="'+(x-21)+'" y="'+(mid-12)+'" width="42" height="24" rx="5" fill="'+color+'"/>' +
+  '<text x="'+x+'" y="'+(mid+5)+'" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="13" font-weight="700">'+label+'</text>';
+}
+function mark(x1,x2,y,txt,anchor){
+  return '<line x1="'+x1+'" y1="'+y+'" x2="'+x2+'" y2="'+y+'" stroke="#D64828" stroke-width="3"/>' +
+  '<text x="'+(x2+6)+'" y="'+(y+4)+'" fill="#D64828" font-family="ui-monospace,monospace" font-size="13" font-weight="700" text-anchor="'+(anchor||"start")+'">'+txt+'</text>';
+}
+function tx(x,y,w){
+  w=w||110;
+  return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="30" rx="7" fill="#0C252A"/>' +
+  '<circle cx="'+(x+15)+'" cy="'+(y+15)+'" r="9" fill="#F2B705"/>' +
+  '<text x="'+(x+w/2+9)+'" y="'+(y+20)+'" text-anchor="middle" fill="#0BE3A6" font-family="ui-monospace,monospace" font-size="12" font-weight="700" letter-spacing="1">TX</text>' +
+  '<text x="'+(x+2)+'" y="'+(y-5)+'" fill="#61706E" font-family="ui-monospace,monospace" font-size="10">HP</text>' +
+  '<text x="'+(x+w-16)+'" y="'+(y-5)+'" fill="#61706E" font-family="ui-monospace,monospace" font-size="10">LP</text>';
+}
+function ventSym(x,y){
+  return '<line x1="'+x+'" y1="'+y+'" x2="'+x+'" y2="'+(y-16)+'" stroke="#4a5a58" stroke-width="3"/>' +
+  '<path d="M'+(x-8)+','+(y-16)+' L'+(x+8)+','+(y-16)+' M'+(x-5)+','+(y-21)+' L'+(x+5)+','+(y-21)+' M'+(x-2)+','+(y-26)+' L'+(x+2)+','+(y-26)+'" stroke="#4a5a58" stroke-width="2.5" fill="none"/>' +
+  '<text x="'+(x+13)+'" y="'+(y-16)+'" fill="#61706E" font-family="ui-monospace,monospace" font-size="10" font-weight="700">ATM</text>';
+}
+// open-top vessel with liquid
+function openVessel(liqTop){
+  return '<path d="M55,60 L55,340 Q55,352 67,352 L188,352 Q200,352 200,340 L200,60" fill="none" stroke="#0F4C55" stroke-width="4"/>' +
+  '<path d="M59,'+liqTop+' L59,338 Q59,348 69,348 L186,348 Q196,348 196,338 L196,'+liqTop+' Z" fill="#17727E" opacity=".85"/>' +
+  '<path d="M59,'+liqTop+' Q80,'+(liqTop-5)+' 105,'+liqTop+' T151,'+liqTop+' T196,'+liqTop+'" fill="none" stroke="#BFE4E7" stroke-width="2"/>';
+}
+// closed vessel with liquid + vapor space
+function closedVessel(liqTop){
+  return '<rect x="55" y="58" width="145" height="296" rx="22" fill="#DFEAE8"/>' +
+  '<path d="M59,'+liqTop+' L59,332 Q59,350 77,350 L178,350 Q196,350 196,332 L196,'+liqTop+' Z" fill="#17727E" opacity=".9"/>' +
+  '<rect x="55" y="58" width="145" height="296" rx="22" fill="none" stroke="#0F4C55" stroke-width="4"/>' +
+  '<text x="127" y="82" text-anchor="middle" fill="#61706E" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700">VAPOR (P)</text>';
+}
+
+/* ---------- MODE DEFINITIONS ---------- */
+var MODES = {
+
+  /* ============ 1. ABIERTO AL RAS ============ */
+  flush:{
+    num:"01", short:"Abierto\nal ras", name:"Tanque abierto · transmisor al ras del 0%",
+    tagline:"Caso de referencia. Es el Montaje 2 con d = 0.",
+    explain:'<p><b>Cuándo lo encuentras:</b> tanques atmosféricos donde la toma de proceso queda a la altura exacta del 0% y el transmisor se monta directo en la toma (o brida). El lado LP se ventea a la atmósfera.</p><p><b>Comportamiento:</b> con el tanque en 0% no hay columna sobre el diafragma → LRV = 0. Es el único montaje sin offset. Poco común en la práctica porque no deja espacio para drenar ni dar mantenimiento sin vaciar.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Distancia vertical del <b>0%</b> al <b>100%</b>.", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"Densidad relativa del proceso", hint:"SG del líquido a temperatura de operación. Ver tabla de referencia abajo.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 430">';
+      s+=openVessel(110);
+      s+=ventSym(320,255);
+      s+=mark(196,222,110,"100%");
+      s+=mark(196,222,300,"0%");
+      // HP line at 0% height to TX at same height
+      s+='<path d="M200,300 L235,300" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<path d="M330,300 L330,270" fill="none" stroke="#4a5a58" stroke-width="3"/>'; // LP to vent
+      s+=tx(228,285,112);
+      s+='<text x="240" y="330" fill="#61706E" font-family="ui-monospace,monospace" font-size="10.5">diafragma al ras del 0%</text>';
+      s+=dimArrow(36,110,300,"#17727E", v.L!==null?fmt(v.L):"L");
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = 0',
+                '<span class="sym">URV</span> = L × SG',
+                '<span class="sym">Span</span> = L × SG'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">URV = '+fmt(v.Lin)+' × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+' inH₂O</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp; return {lrv:0, urv:span, span:span}; },
+    need:["L","SGp"],
+    pitfalls:'<div class="note info"><div class="ic">i</div><div><b>Úsalo como patrón mental.</b> Todos los demás montajes son este caso más un offset por columnas fijas. Si entiendes por qué aquí LRV = 0, entiendes de dónde sale el offset en los otros.</div></div>'
+  },
+
+  /* ============ 2. ABIERTO SUPRIMIDO ============ */
+  sup:{
+    num:"02", short:"Abierto\ncero suprimido", name:"Tanque abierto · transmisor abajo (cero suprimido)",
+    tagline:"El más común en campo: el transmisor se baja para drenaje y mantenimiento.",
+    explain:'<p><b>Cuándo lo encuentras:</b> casi siempre. El transmisor se monta por debajo de la toma para poder purgarlo, calibrarlo en sitio y protegerlo. La tubería de impulso HP queda llena de proceso.</p><p><b>Comportamiento:</b> esa columna extra de altura <b>d</b> empuja el diafragma <b>siempre</b>, incluso con el tanque en 0%. Por eso el LRV es positivo y hay que <b>suprimir el cero</b> en la configuración: si dejas LRV = 0, el transmisor marcará nivel cuando el tanque está vacío.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0%</b> al <b>100%</b>, vertical.", u:true},
+      {id:"d", chip:"d", cls:"c-red", label:"Supresión (transmisor → 0%)", hint:"Del <b>diafragma del transmisor</b> hacia arriba hasta el <b>0%</b>. Misma unidad que L.", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"Densidad relativa del proceso", hint:"A temperatura de operación.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 460">';
+      s+=openVessel(105);
+      s+=ventSym(330,360);
+      s+=mark(196,222,105,"100%");
+      s+=mark(196,222,275,"0%");
+      s+='<path d="M200,275 L245,275 L245,390 L252,390" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<path d="M340,390 L340,375" fill="none" stroke="#4a5a58" stroke-width="3"/>';
+      s+=tx(248,375,100);
+      s+=dimArrow(36,105,275,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(232,275,390,"#D64828", v.d!==null?fmt(v.d):"d");
+      s+='<line x1="222" y1="275" x2="245" y2="275" stroke="#D64828" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>';
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#D64828","d — diafragma → 0%"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = d × SG',
+                '<span class="sym">URV</span> = (d + L) × SG',
+                '<span class="sym">Span</span> = L × SG'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.din)+' × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = ('+fmt(v.din)+' + '+fmt(v.Lin)+') × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=v.din*v.SGp; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","d","SGp"],
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Error clásico:</b> configurar LRV = 0 "porque el tanque vacío es cero". El tanque vacío NO es cero de presión aquí: la columna d sigue presente. El cero de nivel corresponde a d×SG.</div></div><div class="note info"><div class="ic">i</div><div><b>El span no depende de d.</b> Si mañana reubican el transmisor más abajo, solo cambia el LRV — el span queda igual.</div></div>'
+  },
+
+  /* ============ 3. ABIERTO ELEVADO ============ */
+  elev:{
+    num:"03", short:"Abierto\ncero elevado", name:"Tanque abierto · transmisor arriba (cero elevado)",
+    tagline:"Raro pero real: cuando el rack o la zona inundable obligan a subir el transmisor.",
+    explain:'<p><b>Cuándo lo encuentras:</b> fosos, tanques enterrados, zonas inundables o diseños de rack donde el transmisor debe quedar por encima de la toma. Aquí el 0% se define en la toma.</p><p><b>Comportamiento:</b> la tubería de impulso HP queda llena de líquido <b>por debajo del diafragma</b>: esa columna "jala" y resta presión. Con el nivel en 0% el transmisor ve presión <b>negativa</b> → LRV negativo → cero elevado.</p><p><b>Condición de validez:</b> la línea de impulso debe permanecer llena (cebada). Si el líquido se descuelga o vaporiza (presión de vapor alta, mucha elevación), la medición se pierde. La elevación práctica está limitada por la presión de vapor del fluido.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0% (la toma)</b> al <b>100%</b>.", u:true},
+      {id:"e", chip:"e", cls:"c-red", label:"Elevación (0% → transmisor)", hint:"De la <b>toma (0%)</b> hacia arriba hasta el <b>diafragma</b>.", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"Densidad relativa del proceso", hint:"A temperatura de operación.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 440">';
+      s+=openVessel(100);
+      s+=ventSym(330,190);
+      s+=mark(196,222,100,"100%");
+      s+=mark(196,222,330,"0%");
+      s+='<path d="M200,330 L245,330 L245,220 L252,220" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<path d="M340,220 L340,205" fill="none" stroke="#4a5a58" stroke-width="3"/>';
+      s+=tx(248,205,100);
+      s+=dimArrow(36,100,330,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(232,220,330,"#D64828", v.e!==null?fmt(v.e):"e");
+      s+='<text x="248" y="252" fill="#A5331B" font-family="ui-monospace,monospace" font-size="10">línea llena (cebada)</text>';
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#D64828","e — 0% → diafragma"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = −e × SG',
+                '<span class="sym">URV</span> = (L − e) × SG',
+                '<span class="sym">Span</span> = L × SG'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = −'+fmt(v.ein)+' × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = ('+fmt(v.Lin)+' − '+fmt(v.ein)+') × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=-v.ein*v.SGp; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","e","SGp"],
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Verifica que el sensor acepte LRV negativo</b> de esa magnitud (rango físico con elevación). Casi todos los DP modernos lo permiten, pero confírmalo en la hoja de datos antes de comprometerte con la instalación.</div></div>'
+  },
+
+  /* ============ 4. CERRADO PIERNA SECA ============ */
+  dry:{
+    num:"04", short:"Cerrado\npierna seca", name:"Tanque cerrado · pierna LP seca",
+    tagline:"Tu caso del amoníaco. Misma fórmula que el suprimido — el riesgo está en mantener la pierna seca.",
+    explain:'<p><b>Cuándo lo encuentras:</b> vasijas presurizadas donde el LP se conecta a la fase vapor para cancelar la presión del tanque. Si el vapor no condensa (o se drena), la pierna no aporta columna.</p><p><b>Comportamiento:</b> la presión de la vasija llega igual a ambos lados y se cancela. Queda solo la hidrostática del lado HP → fórmula idéntica al tanque abierto con supresión.</p><p><b>La regla de oro:</b> si el fluido condensa a temperatura ambiente del tubing (amoníaco, vapor de agua, propano, cloro...), la pierna seca <b>no existe sin mantenimiento</b>: necesitas dren programado, pendiente hacia la vasija, o trazado de calor. Si no, migra sola a pierna húmeda descontrolada y el nivel deriva hacia abajo.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0%</b> al <b>100%</b> (sobre el vidrio de nivel si lo hay).", u:true},
+      {id:"d", chip:"d", cls:"c-red", label:"Offset (transmisor → 0%)", hint:"Del <b>diafragma</b> hacia arriba hasta el <b>0%</b>. Transmisor <b>abajo</b> del 0% → d positivo (supresión). Transmisor <b>arriba</b> del 0% → d negativo (elevación); en ese caso la línea HP debe permanecer llena (cebada).", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"Densidad relativa del proceso", hint:"NH₃: 0.64 @0°C · 0.60 @25°C · 0.58 @40°C.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 470">';
+      s+=closedVessel(140);
+      s+=mark(200,226,140,"100%");
+      s+=mark(200,226,300,"0%");
+      // HP bottom
+      s+='<path d="M127,354 L127,378 L252,378 L252,392" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<text x="88" y="374" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700">HP (líq.)</text>';
+      // LP from top down (dry - empty tube)
+      s+='<path d="M170,58 L170,40 L330,40 L330,392 L338,392" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<text x="178" y="34" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700">LP (vapor · SECA)</text>';
+      // drain
+      s+='<g transform="translate(330,370)"><path d="M-6,-6 L6,6 M6,-6 L-6,6" stroke="#D64828" stroke-width="3"/></g>';
+      s+='<text x="342" y="366" fill="#A5331B" font-family="ui-monospace,monospace" font-size="9.5" font-weight="700">DREN</text>';
+      s+=tx(245,377,100);
+      s+=dimArrow(36,140,300,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(238,300,392,"#D64828", v.d!==null?fmt(v.d):"d");
+      s+='<line x1="226" y1="300" x2="238" y2="300" stroke="#D64828" stroke-width="1" stroke-dasharray="3 3" opacity=".6"/>';
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#D64828","d — diafragma → 0%"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = d × SG',
+                '<span class="sym">URV</span> = (d + L) × SG',
+                '<span class="sym">Span</span> = L × SG',
+                '<span class="sub-line">La presión de la vasija se cancela (llega a ambos lados)</span>'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.din)+' × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = ('+fmt(v.din)+' + '+fmt(v.Lin)+') × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=v.din*v.SGp; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","d","SGp"],
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Si el tubing LP sube antes de bajar, forma trampa:</b> el condensado no escurre de vuelta y se acumula en el tramo hacia el transmisor → lee nivel bajo. Identifica el punto bajo, exige válvula de dren y frecuencia de purga documentada.</div></div><div class="note info"><div class="ic">i</div><div><b>Síntoma en operación:</b> el transmisor coincide con el vidrio de nivel recién purgado y se va separando con los días. Eso NO se corrige recalibrando: se corrige purgando.</div></div><div class="note info"><div class="ic">±</div><div><b>Supresión y elevación en un solo campo:</b> la fórmula LRV = d × SG cubre ambos casos con el signo de d. Transmisor abajo del 0% → d positivo → LRV positivo (cero suprimido). Transmisor arriba del 0% → d negativo → LRV negativo (cero elevado). El indicador del tablero te lo confirma automáticamente según el signo del resultado.</div></div>'
+  },
+
+  /* ============ 5. CERRADO PIERNA HÚMEDA ============ */
+  wet:{
+    num:"05", short:"Cerrado\npierna húmeda", name:"Tanque cerrado · pierna LP húmeda (con pote)",
+    tagline:"La referencia estable para vapores condensables. Estándar en calderas y servicios de vapor.",
+    explain:'<p><b>Cuándo lo encuentras:</b> calderines de vapor, gases licuados, cualquier servicio donde el vapor condensa sí o sí. En lugar de pelear contra el condensado, se llena la pierna LP a propósito con un líquido de referencia y un <b>pote de condensado</b> arriba fija la columna a altura constante.</p><p><b>Comportamiento:</b> la columna de referencia (h_ref × SG_ref) empuja el lado LP de forma fija y conocida. Como normalmente supera a la columna HP en 0%, el <b>LRV sale negativo</b> (cero elevado). El líquido de la pierna puede ser el mismo proceso condensado o un líquido de sello distinto (glicol, etc.) — por eso la fórmula lleva dos SG.</p><p><b>Detalle fino:</b> h_ref se mide desde el <b>nivel de líquido en el pote</b> (o la toma superior si no hay pote) hasta el diafragma. La SG de la pierna es a la temperatura del <b>tubing</b> (ambiente), no a la del proceso — el condensado en la pierna está frío.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0%</b> al <b>100%</b>.", u:true},
+      {id:"d", chip:"d", cls:"c-red", label:"Supresión (transmisor → 0%)", hint:"Del <b>diafragma</b> al <b>0%</b>.", u:true},
+      {id:"href", chip:"h_ref", cls:"c-blue", label:"Columna de referencia", hint:"Del <b>diafragma</b> hasta el <b>nivel del pote</b> (o toma superior). Normalmente h_ref ≥ d + L.", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"SG del proceso", hint:"A temperatura de operación.", sg:true},
+      {id:"SGr", chip:"SGr", cls:"c-blue", label:"SG de la pierna de referencia", hint:"Del líquido que llena la pierna, a temperatura <b>ambiente</b>. Si es el mismo proceso condensado y frío, su SG puede diferir del de operación.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 470">';
+      s+=closedVessel(140);
+      s+=mark(200,226,140,"100%");
+      s+=mark(200,226,300,"0%");
+      s+='<path d="M127,354 L127,378 L252,378 L252,392" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<text x="88" y="374" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10.5" font-weight="700">HP</text>';
+      // LP top to pot then filled column down
+      s+='<path d="M170,58 L170,40 L316,40 L316,52" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      // condensate pot
+      s+='<rect x="300" y="52" width="32" height="26" rx="6" fill="#DFEAE8" stroke="#4a5a58" stroke-width="3"/>';
+      s+='<rect x="302" y="66" width="28" height="10" rx="3" fill="#2E7DD1"/>';
+      s+='<text x="340" y="68" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="9.5" font-weight="700">POTE</text>';
+      // filled leg
+      s+='<path d="M316,78 L316,392 L338,392" fill="none" stroke="#4a5a58" stroke-width="6"/>';
+      s+='<path d="M316,78 L316,392 L338,392" fill="none" stroke="#2E7DD1" stroke-width="3"/>';
+      s+='<text x="322" y="240" fill="#2E7DD1" font-family="ui-monospace,monospace" font-size="10" font-weight="700" transform="rotate(-90 322 240)">LLENA · SG_ref</text>';
+      s+=tx(245,377,100);
+      s+=dimArrow(36,140,300,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(238,300,392,"#D64828", v.d!==null?fmt(v.d):"d");
+      s+=dimArrow(296,72,392,"#2E7DD1", v.href!==null?fmt(v.href):"h_ref");
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#D64828","d — diafragma → 0%"],["#2E7DD1","h_ref — diafragma → pote"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = d × SG − h_ref × SG_ref',
+                '<span class="sym">URV</span> = LRV + L × SG',
+                '<span class="sym">Span</span> = L × SG',
+                '<span class="sub-line">La pierna llena (LP) RESTA — por eso el cero sale elevado</span>'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.din)+'×'+fmt3(v.SGp)+' − '+fmt(v.hrefin)+'×'+fmt3(v.SGr)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = '+fmt(v.r.lrv)+' + '+fmt(v.Lin)+'×'+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=v.din*v.SGp - v.hrefin*v.SGr; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","d","href","SGp","SGr"],
+    validate:function(v){
+      if(v.hrefin < v.din + v.Lin) return "Normalmente h_ref ≥ d + L (el pote va a la altura de la toma superior o más arriba). Verifica tu medición.";
+      return null;
+    },
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>La pierna debe estar 100% llena, siempre.</b> Una burbuja o una fuga que baje la columna desplaza el cero. En comisionamiento: llena la pierna ANTES de poner en servicio (secuencia de manifold) y verifica el cero contra el vidrio.</div></div><div class="note info"><div class="ic">i</div><div><b>El LRV negativo es normal aquí.</b> No es un error de cálculo: el transmisor trabajará en la zona negativa de su rango. Configúralo tal cual, con signo.</div></div>'
+  },
+
+  /* ============ 6. SELLOS REMOTOS ============ */
+  seal:{
+    num:"06", short:"Sellos\nremotos", name:"Sellos remotos con capilares",
+    tagline:"Para procesos corrosivos, sucios, viscosos o de temperatura extrema. La altura del transmisor NO importa.",
+    explain:'<p><b>Cuándo lo encuentras:</b> ácidos, lodos, polímeros, alta temperatura — donde el tubing convencional se tapona, corroe o congela. Se montan diafragmas de sello en las bridas de proceso, conectados al transmisor por capilares llenos de fluido de fábrica (silicona típicamente).</p><p><b>La propiedad clave:</b> como <b>ambos</b> capilares están llenos del mismo fluido, la elevación del transmisor se cancela matemáticamente — puedes montarlo arriba, abajo o al lado y el rango no cambia. Lo único que queda es la <b>diferencia de altura entre los dos sellos (T)</b>, que genera un offset fijo de −T × SG_fill.</p><p><b>De dónde salen los datos:</b> SG_fill viene en la hoja de datos del sello (silicona ≈ 0.93–0.97 según grado). T se mide entre los centros de las dos bridas de sello. Si el 0% no coincide con el sello inferior, la distancia <b>a</b> (sello HP → 0%) agrega el término a × SG del proceso.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0%</b> al <b>100%</b>.", u:true},
+      {id:"a", chip:"a", cls:"c-red", label:"Sello HP → 0%", hint:"Del centro del <b>sello inferior</b> al <b>0%</b>. Si el 0% está en el sello, pon 0.", u:true, def:"0"},
+      {id:"T", chip:"T", cls:"c-gold", label:"Distancia entre sellos", hint:"Vertical, de centro de <b>sello HP</b> a centro de <b>sello LP</b>.", u:true},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"SG del proceso", hint:"A temperatura de operación.", sg:true},
+      {id:"SGf", chip:"SGf", cls:"c-gold", label:"SG del fluido de llenado", hint:"De la <b>hoja de datos del sello</b>. Silicona típica ≈ 0.93.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 470">';
+      s+=closedVessel(140);
+      s+=mark(200,226,140,"100%");
+      s+=mark(200,226,296,"0%");
+      // HP seal flange (bottom)
+      s+='<circle cx="212" cy="330" r="14" fill="#DFEAE8" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<circle cx="212" cy="330" r="6" fill="#F2B705"/>';
+      s+='<text x="232" y="326" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10" font-weight="700">SELLO HP</text>';
+      // LP seal flange (top)
+      s+='<circle cx="212" cy="112" r="14" fill="#DFEAE8" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<circle cx="212" cy="112" r="6" fill="#F2B705"/>';
+      s+='<text x="232" y="104" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10" font-weight="700">SELLO LP</text>';
+      // capillaries (wavy thin)
+      s+='<path d="M226,330 Q260,335 270,360 T290,405" fill="none" stroke="#C98A00" stroke-width="2.5"/>';
+      s+='<path d="M226,116 Q290,130 300,240 T308,405" fill="none" stroke="#C98A00" stroke-width="2.5"/>';
+      s+='<text x="300" y="250" fill="#C98A00" font-family="ui-monospace,monospace" font-size="9.5" font-weight="700" transform="rotate(78 300 250)">capilares</text>';
+      s+=tx(258,405,100);
+      s+='<text x="252" y="455" fill="#61706E" font-family="ui-monospace,monospace" font-size="10">altura del TX: irrelevante ✓</text>';
+      s+=dimArrow(36,140,296,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(168,112,330,"#C98A00", v.T!==null?fmt(v.T):"T");
+      // a: seal to 0%
+      s+=dimArrow(348,296,330,"#D64828", v.a!==null?fmt(v.a):"a");
+      s+='<line x1="226" y1="330" x2="348" y2="330" stroke="#D64828" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>';
+      s+='<line x1="226" y1="296" x2="348" y2="296" stroke="#D64828" stroke-width="1" stroke-dasharray="3 3" opacity=".5"/>';
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#C98A00","T — sello HP → sello LP"],["#D64828","a — sello HP → 0%"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = a × SG − T × SG_fill',
+                '<span class="sym">URV</span> = LRV + L × SG',
+                '<span class="sym">Span</span> = L × SG',
+                '<span class="sub-line">El capilar LP baja T más que el HP → offset fijo −T×SG_fill</span>'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.ain)+'×'+fmt3(v.SGp)+' − '+fmt(v.Tin)+'×'+fmt3(v.SGf)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = '+fmt(v.r.lrv)+' + '+fmt(v.Lin)+'×'+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=v.ain*v.SGp - v.Tin*v.SGf; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","a","T","SGp","SGf"],
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Efecto temperatura en capilares:</b> el fluido de llenado se expande/contrae con la temperatura ambiente y desplaza el cero (error estacional día/noche). Capilares largos = más error. Mantén ambos capilares de igual longitud y ruteados juntos cuando puedas.</div></div><div class="note info"><div class="ic">i</div><div><b>Nunca cortes ni abras un capilar:</b> el sistema viene llenado al vacío de fábrica. Una burbuja arruina el sello completo (se cambia el conjunto, no se repara en campo).</div></div>'
+  },
+
+  /* ============ 7. INTERFASE ============ */
+  iface:{
+    num:"07", short:"Interfase\nlíquido-líquido", name:"Interfase entre dos líquidos (vasija inundada)",
+    tagline:"Separadores y decantadores. El DP responde a la DIFERENCIA de densidades — el span es pequeño.",
+    explain:'<p><b>Cuándo lo encuentras:</b> separadores agua-hidrocarburo, decantadores, cualquier vasija con dos fases inmiscibles. La zona entre las dos tomas debe estar <b>siempre inundada</b>: la toma inferior siempre en líquido pesado o en la interfase medible, la superior siempre cubierta de líquido ligero.</p><p><b>Comportamiento:</b> al subir la interfase, líquido ligero es reemplazado por pesado. El ΔP cambia solo por la diferencia (SG_H − SG_L) — por eso el <b>span de interfase es mucho más pequeño</b> que el de un nivel normal, y exige un sensor con buen desempeño en spans cortos.</p><p><b>La pierna LP:</b> aquí casi siempre es húmeda (llena de líquido ligero, condensado o líquido de sello), porque la toma superior está inundada. h_ref y SG_ref describen esa columna.</p>',
+    fields:[
+      {id:"T", chip:"T", cls:"c-teal", label:"Distancia entre tomas", hint:"Vertical, toma inferior → toma superior. Es el rango de interfase medible (0% = toma inferior, 100% = toma superior).", u:true},
+      {id:"d", chip:"d", cls:"c-red", label:"Toma inferior → transmisor", hint:"Del diafragma a la <b>toma inferior</b>. Línea HP llena de líquido pesado. Si están al ras, 0.", u:true, def:"0"},
+      {id:"href", chip:"h_ref", cls:"c-blue", label:"Columna de referencia (LP)", hint:"Del <b>diafragma</b> al tope de la pierna LP llena.", u:true},
+      {id:"SGh", chip:"SG_H", cls:"c-purple", label:"SG líquido pesado", hint:"El de abajo (ej. agua ≈ 1.00).", sg:true},
+      {id:"SGl", chip:"SG_L", cls:"c-teal", label:"SG líquido ligero", hint:"El de arriba (ej. hidrocarburo ≈ 0.85).", sg:true},
+      {id:"SGr", chip:"SGr", cls:"c-blue", label:"SG pierna de referencia", hint:"Del líquido que llena la pierna LP. Si es el ligero condensado, usa SG_L.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 470">';
+      // flooded vessel: light on top, heavy below, interface wavy
+      s+='<rect x="55" y="58" width="145" height="296" rx="22" fill="#5FA8AE" opacity=".55"/>';
+      s+='<path d="M59,238 L59,332 Q59,350 77,350 L178,350 Q196,350 196,332 L196,238 Z" fill="#5B4A8A" opacity=".8"/>';
+      s+='<path d="M59,238 Q80,232 105,238 T151,238 T196,238" fill="none" stroke="#fff" stroke-width="2.5" stroke-dasharray="5 4"/>';
+      s+='<rect x="55" y="58" width="145" height="296" rx="22" fill="none" stroke="#0F4C55" stroke-width="4"/>';
+      s+='<text x="127" y="150" text-anchor="middle" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="11" font-weight="700">LIGERO · SG_L</text>';
+      s+='<text x="127" y="310" text-anchor="middle" fill="#E8E2F5" font-family="ui-monospace,monospace" font-size="11" font-weight="700">PESADO · SG_H</text>';
+      s+='<text x="127" y="228" text-anchor="middle" fill="#fff" font-family="ui-monospace,monospace" font-size="9.5">interfase ⇅</text>';
+      // taps: lower y=330 (100%... no: lower tap = 0%), upper y=100
+      s+=mark(200,224,100,"100%");
+      s+=mark(200,224,330,"0%");
+      // HP from lower tap
+      s+='<path d="M200,330 L245,330 L245,405 L252,405" fill="none" stroke="#4a5a58" stroke-width="4"/>';
+      s+='<text x="205" y="322" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10" font-weight="700">HP</text>';
+      // LP from upper tap - wet
+      s+='<path d="M200,100 L316,100 L316,405 L338,405" fill="none" stroke="#4a5a58" stroke-width="6"/>';
+      s+='<path d="M200,100 L316,100 L316,405 L338,405" fill="none" stroke="#2E7DD1" stroke-width="3"/>';
+      s+='<text x="322" y="250" fill="#2E7DD1" font-family="ui-monospace,monospace" font-size="10" font-weight="700" transform="rotate(-90 322 250)">LP LLENA · SG_ref</text>';
+      s+=tx(248,390,100);
+      s+=dimArrow(36,100,330,"#17727E", v.T!==null?fmt(v.T):"T");
+      s+=dimArrow(232,330,405,"#D64828", v.d!==null?fmt(v.d):"d");
+      s+=dimArrow(296,100,405,"#2E7DD1", v.href!==null?fmt(v.href):"h_ref");
+      return s+'</svg>';
+    },
+    legend:[["#17727E","T — toma inf. → toma sup."],["#D64828","d — diafragma → toma inf."],["#2E7DD1","h_ref — columna LP"],["#5B4A8A","líquido pesado"]],
+    formula:function(v){
+      var rows=['<span class="sym">Span</span> = T × (SG_H − SG_L)',
+                '<span class="sym">LRV</span> = T × SG_L + d × SG_H − h_ref × SG_ref',
+                '<span class="sym">URV</span> = LRV + Span',
+                '<span class="sub-line">0% = interfase en la toma inferior (zona toda de ligero)</span>'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">Span = '+fmt(v.Tin)+'×('+fmt3(v.SGh)+'−'+fmt3(v.SGl)+') = <span class="res">'+fmt(v.r.span)+'</span></span>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.Tin)+'×'+fmt3(v.SGl)+' + '+fmt(v.din)+'×'+fmt3(v.SGh)+' − '+fmt(v.hrefin)+'×'+fmt3(v.SGr)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){
+      var span=v.Tin*(v.SGh-v.SGl);
+      var lrv=v.Tin*v.SGl + v.din*v.SGh - v.hrefin*v.SGr;
+      return {lrv:lrv, urv:lrv+span, span:span};
+    },
+    need:["T","d","href","SGh","SGl","SGr"],
+    validate:function(v){
+      if(v.SGh<=v.SGl) return "SG_H debe ser mayor que SG_L (el pesado abajo). Revisa los valores.";
+      return null;
+    },
+    pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Span pequeño = exigencia alta.</b> Con SG_H−SG_L = 0.15 y T = 40 in, el span es solo 6 inH₂O. Verifica que el sensor tenga la precisión adecuada en ese span (turn-down) y considera el efecto de emulsión en la interfase (no es una línea nítida).</div></div><div class="note info"><div class="ic">i</div><div><b>Ambas tomas siempre inundadas.</b> Si la interfase se sale del rango T, la lectura satura y pierde significado. El diseño de proceso debe garantizar que la interfase viva entre las tomas.</div></div>'
+  }
+};
+
+var ORDER=["flush","sup","elev","dry","wet","seal","iface"];
+
+/* ---------- RENDER ---------- */
+function buildChips(){
+  var html="";
+  ORDER.forEach(function(id){
+    var m=MODES[id];
+    html+='<button type="button" class="mode-chip'+(id===currentMode?" on":"")+'" data-m="'+id+'">'+
+      '<span class="num">'+m.num+'</span><span class="nm">'+m.short.replace("\n","<br>")+'</span></button>';
+  });
+  document.getElementById("modes").innerHTML=html;
+}
+
+function fieldHTML(f){
+  var unitSel = f.u ? '<div class="seg u-seg"><button type="button" data-u="in" class="'+(unit==="in"?"on":"")+'">in</button><button type="button" data-u="cm" class="'+(unit==="cm"?"on":"")+'">cm</button></div>' : "";
+  return '<div class="field"><label><span class="chip '+f.cls+'">'+f.chip+'</span>'+f.label+'</label>'+
+    '<div class="hint">'+f.hint+'</div>'+
+    '<div class="input-row"><input id="in_'+f.id+'" type="number" inputmode="decimal" step="any" placeholder="'+(f.sg?"0.000":"0.0")+'"'+(f.def!==undefined?' value="'+f.def+'"':'')+'>'+unitSel+'</div></div>';
+}
+
+function renderMode(){
+  var m=MODES[currentMode];
+  var leg=m.legend.map(function(l){return '<span><i class="dot" style="background:'+l[0]+'"></i> '+l[1]+'</span>';}).join("");
+  var fieldsHtml=m.fields.map(fieldHTML).join("");
+  var html=
+    '<div class="card"><div class="card-label"><span class="n">'+m.num+'</span> '+m.name+'</div>'+
+      '<div class="tagline">'+m.tagline+'</div>'+
+      '<div class="explain">'+m.explain+'</div></div>'+
+    '<div class="card diagram-card"><div class="card-label"><span class="n">⌖</span> Esquema y cotas</div>'+
+      '<div id="diagram"></div><div class="legend">'+leg+'</div></div>'+
+    '<div class="card"><div class="card-label"><span class="n">✎</span> Datos de campo</div>'+fieldsHtml+'</div>'+
+    '<div class="card"><div class="card-label"><span class="n">ƒ</span> Fórmulas</div><div class="formula-panel" id="formulaPanel"></div><div id="valWarn"></div></div>';
+  document.getElementById("modeArea").innerHTML=html;
+  document.getElementById("pitfallCard").innerHTML='<div class="card-label"><span class="n">!</span> Lo que un comisionador vigila aquí</div>'+m.pitfalls;
+
+  // wire inputs
+  m.fields.forEach(function(f){
+    document.getElementById("in_"+f.id).addEventListener("input",calc);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll(".u-seg button"),function(b){
+    b.addEventListener("click",function(){
+      unit=this.dataset.u;
+      Array.prototype.forEach.call(document.querySelectorAll(".u-seg button"),function(x){
+        x.classList.toggle("on", x.dataset.u===unit);
+      });
+      calc();
+    });
+  });
+  calc();
+}
+
+function readValues(){
+  var m=MODES[currentMode], v={ok:true};
+  m.fields.forEach(function(f){
+    var raw=parseFloat(document.getElementById("in_"+f.id).value);
+    var val=isNaN(raw)?null:raw;
+    v[f.id]=val;
+    if(f.sg){ v[f.id]=val; }
+    else { v[f.id+"in"]= val===null?null:toIn(val); }
+  });
+  m.need.forEach(function(id){
+    var isSG = m.fields.some(function(f){return f.id===id && f.sg;});
+    var val = isSG? v[id] : v[id+"in"];
+    if(val===null || (isSG && val<=0)) v.ok=false;
+  });
+  return v;
+}
+
+function calc(){
+  var m=MODES[currentMode];
+  var v=readValues();
+
+  // diagram (with live labels)
+  document.getElementById("diagram").innerHTML=m.svg(v);
+
+  var lrvEl=document.getElementById("lrv"),urvEl=document.getElementById("urv"),spanEl=document.getElementById("span");
+  var pill=document.getElementById("statusPill"),conv=document.getElementById("conv"),zt=document.getElementById("zeroType");
+  var warnEl=document.getElementById("valWarn");
+  warnEl.innerHTML="";
+
+  if(!v.ok){
+    document.getElementById("formulaPanel").innerHTML=m.formula(v);
+    [lrvEl,urvEl,spanEl].forEach(function(e){e.textContent="–";e.classList.add("dash");});
+    pill.textContent="faltan datos"; pill.classList.remove("ok");
+    conv.style.display="none"; zt.style.display="none";
+    return;
+  }
+
+  if(m.validate){
+    var w=m.validate(v);
+    if(w) warnEl.innerHTML='<div class="note warn" style="margin-top:10px"><div class="ic">!</div><div>'+w+'</div></div>';
+  }
+
+  v.r=m.compute(v);
+  document.getElementById("formulaPanel").innerHTML=m.formula(v);
+
+  lrvEl.textContent=fmt(v.r.lrv); urvEl.textContent=fmt(v.r.urv); spanEl.textContent=fmt(v.r.span);
+  [lrvEl,urvEl,spanEl].forEach(function(e){e.classList.remove("dash");});
+  pill.textContent="listo"; pill.classList.add("ok");
+
+  zt.style.display="block";
+  if(v.r.lrv>0.005) zt.innerHTML='LRV positivo → <b>CERO SUPRIMIDO</b>';
+  else if(v.r.lrv<-0.005) zt.innerHTML='LRV negativo → <b>CERO ELEVADO</b>';
+  else zt.innerHTML='LRV = 0 → <b>SIN OFFSET</b>';
+
+  document.getElementById("cMbar").textContent=fmt(v.r.lrv*INH2O_MBAR)+" / "+fmt(v.r.urv*INH2O_MBAR)+" mbar";
+  document.getElementById("cKpa").textContent=fmt(v.r.lrv*INH2O_KPA)+" / "+fmt(v.r.urv*INH2O_KPA)+" kPa";
+  document.getElementById("cSpan").textContent=fmt(v.r.span*INH2O_MBAR)+" mbar · "+fmt(v.r.span*25.4)+" mmH₂O";
+  conv.style.display="flex";
+}
+
+function resetAll(){
+  var m=MODES[currentMode];
+  m.fields.forEach(function(f){
+    document.getElementById("in_"+f.id).value = f.def!==undefined? f.def : "";
+  });
+  calc();
+}
+
+document.getElementById("modes").addEventListener("click",function(e){
+  var b=e.target.closest(".mode-chip"); if(!b)return;
+  currentMode=b.dataset.m;
+  buildChips();
+  renderMode();
+  window.scrollTo({top:document.getElementById("modeArea").offsetTop-70,behavior:"smooth"});
+});
+
+buildChips();
+renderMode();
+</script>
+<script>
+if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+  navigator.serviceWorker.register("./sw.js").catch(function(){});
+}
+</script>
+</body>
+</html>
