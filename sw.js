@@ -1,4 +1,4 @@
-var CACHE = "nivel-dp-v1";
+var CACHE = "nivel-dp-v2";
 var ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", function(e){

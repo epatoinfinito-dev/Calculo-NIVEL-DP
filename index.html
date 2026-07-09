@@ -198,7 +198,6 @@
   <div class="eyebrow">Instrumentación · Comisionamiento</div>
   <h1>Nivel por Presión Diferencial</h1>
   <div class="sub">7 montajes de campo · Cálculo de rango verificado · Salida <b>inH₂O</b></div>
-  <div class="sub">Creada por: Ing. Eduardo Palacios T.</b></div>
 </header>
 
 <div class="principle">
@@ -722,10 +721,61 @@ var MODES = {
       return null;
     },
     pitfalls:'<div class="note warn"><div class="ic">!</div><div><b>Span pequeño = exigencia alta.</b> Con SG_H−SG_L = 0.15 y T = 40 in, el span es solo 6 inH₂O. Verifica que el sensor tenga la precisión adecuada en ese span (turn-down) y considera el efecto de emulsión en la interfase (no es una línea nítida).</div></div><div class="note info"><div class="ic">i</div><div><b>Ambas tomas siempre inundadas.</b> Si la interfase se sale del rango T, la lectura satura y pierde significado. El diseño de proceso debe garantizar que la interfase viva entre las tomas.</div></div>'
+  },
+
+  /* ============ 8. BURBUJEO (PURGA DE GAS) ============ */
+  bubble:{
+    num:"08", short:"Burbujeo\n(purga de gas)", name:"Sistema de burbujeo · tubo de inmersión (dip tube)",
+    tagline:"Sin pierna mojada ni sellos: un gas de purga transmite la presión hidrostática. Ideal para lodos, sólidos y líquidos corrosivos.",
+    explain:'<p><b>Cuándo lo encuentras:</b> tanques con líquidos que taponan, corroen o son muy viscosos para un tubing de impulso convencional — lechadas de cal, lodos de PTAR, ácidos concentrados. También cuando conviene ubicar el transmisor lejos del tanque, en un sitio accesible, sin que le importe la distancia.</p><p><b>Cómo funciona:</b> un tubo delgado (típicamente ¼") se sumerge cerca del fondo del tanque. Un gas de purga (aire o nitrógeno) fluye muy lentamente y sale por la punta en burbujas. La contrapresión necesaria para que el gas apenas venza el líquido y burbujee es exactamente igual a la presión hidrostática en la punta del tubo — el gas "copia" esa presión hasta el transmisor, sin que el líquido de proceso toque el instrumento.</p><p><b>La punta del tubo NO está en el fondo exacto:</b> se instala unas pulgadas por encima del fondo real para evitar que se tape con sedimento. Esa distancia (s) desde el 0% de tu escala hasta la punta del tubo se comporta <b>exactamente igual que una supresión de cero</b>: si el líquido está en 0% pero la punta sigue sumergida s pulgadas, el transmisor ya ve presión.</p><p><b>Tanque abierto o cerrado:</b> con tanque abierto basta un transmisor de presión manométrica (referencia atmosférica). Con tanque presurizado se usa un transmisor DP, con el lado LP conectado directo a la fase vapor — la presión del tanque se cancela igual que en la pierna seca, y la fórmula no cambia.</p>',
+    fields:[
+      {id:"L", chip:"L", cls:"c-teal", label:"Alto de medición", hint:"Del <b>0%</b> al <b>100%</b> de tu escala de nivel.", u:true},
+      {id:"s", chip:"s", cls:"c-red", label:"Sumergencia de la punta bajo el 0%", hint:"Del <b>0%</b> hacia abajo hasta la <b>punta del tubo de inmersión</b>. Si la punta coincide con el 0%, ingresa 0.", u:true, def:"0"},
+      {id:"SGp", chip:"SG", cls:"c-ink", label:"Densidad relativa del proceso", hint:"A temperatura de operación.", sg:true}
+    ],
+    svg:function(v){
+      var s='<svg viewBox="0 0 380 460">';
+      s+=openVessel(120);
+      s+=mark(196,222,120,"100%");
+      s+=mark(196,222,290,"0%");
+      // gas supply line from right side down into dip tube
+      s+='<path d="M300,150 L260,150 L260,178" fill="none" stroke="#4a5a58" stroke-width="3"/>';
+      // rotameter symbol
+      s+='<rect x="286" y="136" width="26" height="30" rx="5" fill="#DFEAE8" stroke="#4a5a58" stroke-width="2.5"/>';
+      s+='<path d="M299,160 L293,144 L305,144 Z" fill="none" stroke="#17727E" stroke-width="2"/>';
+      s+='<text x="316" y="155" fill="#61706E" font-family="ui-monospace,monospace" font-size="9.5" font-weight="700">ROTÁM.</text>';
+      s+='<text x="230" y="130" fill="#61706E" font-family="ui-monospace,monospace" font-size="9.5" font-weight="700">GAS PURGA</text>';
+      // dip tube going down into vessel, tip near bottom
+      s+='<path d="M260,178 L260,410 L272,410" fill="none" stroke="#4a5a58" stroke-width="5"/>';
+      s+='<circle cx="260" cy="405" r="4" fill="#0BE3A6"/>';
+      s+='<text x="264" y="392" fill="#0F4C55" font-family="ui-monospace,monospace" font-size="10" font-weight="700">punta ⇢ burbujas</text>';
+      // small bubbles
+      s+='<circle cx="253" cy="300" r="2.5" fill="#fff" opacity=".8"/><circle cx="256" cy="270" r="3" fill="#fff" opacity=".7"/><circle cx="251" cy="240" r="2" fill="#fff" opacity=".6"/>';
+      s+=tx(272,395,100);
+      s+=dimArrow(36,120,290,"#17727E", v.L!==null?fmt(v.L):"L");
+      s+=dimArrow(196,290,405,"#D64828", v.s!==null?fmt(v.s):"s");
+      return s+'</svg>';
+    },
+    legend:[["#17727E","L — 0% → 100%"],["#D64828","s — 0% → punta del tubo"]],
+    formula:function(v){
+      var rows=['<span class="sym">LRV</span> = s × SG',
+                '<span class="sym">URV</span> = (s + L) × SG',
+                '<span class="sym">Span</span> = L × SG',
+                '<span class="sub-line">Igual estructura que cero suprimido — la posición del transmisor no importa</span>'];
+      if(v.ok){
+        rows.push('<hr>');
+        rows.push('<span class="sub-line">LRV = '+fmt(v.sin)+' × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.lrv)+'</span></span>');
+        rows.push('<span class="sub-line">URV = ('+fmt(v.sin)+' + '+fmt(v.Lin)+') × '+fmt3(v.SGp)+' = <span class="res">'+fmt(v.r.urv)+'</span></span>');
+      }
+      return rows.join("<br>");
+    },
+    compute:function(v){ var span=v.Lin*v.SGp, lrv=v.sin*v.SGp; return {lrv:lrv, urv:lrv+span, span:span}; },
+    need:["L","s","SGp"],
+    pitfalls:'<div class="note info"><div class="ic">i</div><div><b>La posición del transmisor es irrelevante.</b> Como el tubo de purga solo lleva gas (densidad despreciable), da igual si el transmisor está a 1 m o a 30 m del tanque, arriba o abajo — el cálculo no lleva ningún término de elevación del instrumento.</div></div><div class="note warn"><div class="ic">!</div><div><b>Caudal de purga bajo y continuo.</b> Debe ser lo bastante bajo para no generar caída de presión adicional en el tubo (falsea la lectura hacia arriba), pero nunca debe interrumpirse — si se detiene, el proceso puede refluir hacia el rotámetro y el transmisor. Como referencia de literatura técnica, para un tubo de ¼" se maneja un caudal típico del orden de 1 SCFH; siempre verifica contra la hoja de datos del rotámetro instalado.</div></div><div class="note warn"><div class="ic">!</div><div><b>Taponamiento en lodos/lechadas.</b> Con líquidos cargados de sólidos, puede formarse una costra en la punta del tubo si el caudal es insuficiente o la muesca de salida no es la adecuada — vigila la formación de costra como causa de lectura errática, no solo el caudal del rotámetro.</div></div><div class="note info"><div class="ic">i</div><div><b>Tanque cerrado:</b> usa transmisor DP con el LP referenciado a la fase vapor (misma lógica que la pierna seca) — la fórmula no cambia, solo se cancela la presión del tanque igual que en el Montaje 04.</div></div>'
   }
 };
 
-var ORDER=["flush","sup","elev","dry","wet","seal","iface"];
+var ORDER=["flush","sup","elev","dry","wet","seal","iface","bubble"];
 
 /* ---------- RENDER ---------- */
 function buildChips(){
